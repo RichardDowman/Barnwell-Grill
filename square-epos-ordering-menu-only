@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Barnwell Grill – Order Online</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+:root {
+  --primary:#2563eb; --primary-hover:#1d4ed8;
+  --secondary:#64748b; --success:#059669;
+  --danger:#dc2626; --warning:#d97706;
+  --background:#f8fafc; --surface:#ffffff;
+  --text:#1e293b; --text-muted:#64748b;
+  --border:#e2e8f0; --radius:8px;
+  --shadow:0 4px 6px -1px rgba(0,0,0,.1);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1);
+  --gap:.75rem;
+}
+
+* { box-sizing:border-box; }
+body {
+  margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--background); color:var(--text); line-height:1.4;
+}
+
+/* Header */
+.header {
+  position:sticky; top:0; z-index:110; background:var(--surface);
+  box-shadow:var(--shadow); padding:.75rem 1rem;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.logo { margin:0; font-size:1.25rem; font-weight:700; color:var(--primary); }
+
+.cart-btn {
+  display:flex; align-items:center; gap:.5rem;
+  background:var(--primary); color:#fff; border:none; border-radius:var(--radius);
+  padding:.55rem .9rem; font-weight:600; cursor:pointer; font-size:.95rem;
+}
+.cart-btn:hover { background:var(--primary-hover); }
+.cart-count {
+  background:#fff; color:var(--primary); font-size:.7rem;
+  font-weight:700; border-radius:999px; padding:2px 6px; line-height:1;
+}
+
+.main { padding:0 1rem 1.5rem; max-width:1100px; margin:0 auto; }
+
+/* Sticky Category Bar */
+.category-bar-wrap {
+  position:sticky;
+  top:56px;
+  z-index:105;
+  background:var(--background);
+  padding:.55rem .25rem .65rem;
+  box-shadow:0 2px 4px -2px rgba(0,0,0,.08);
+}
+
+.category-nav {
+  display:flex; gap:.5rem; overflow-x:auto; padding:0 .25rem;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.category-nav::-webkit-scrollbar { display:none; }
+
+.category-pill {
+  flex:0 0 auto; background:var(--surface); border:1px solid var(--border);
+  padding:.5rem .9rem; border-radius:999px; cursor:pointer; font-size:.78rem;
+  font-weight:600; color:var(--text-muted); transition:.15s;
+  white-space:nowrap; user-select:none;
+}
+.category-pill:hover:not(.active):not(.parent){
+  border-color:var(--primary); color:var(--primary);
+}
+.category-pill.active {
+  background:var(--primary); border-color:var(--primary); color:#fff; box-shadow:var(--shadow);
+}
+.category-pill.active:hover { color:#fff; }
+.category-pill.parent {
+  background:#eef3ff;
+  border:1px solid #c8dafd;
+  color:#1d4ed8;
+}
+.category-pill.parent.expanded {
+  background:#1d4ed8; color:#fff; border-color:#1d4ed8;
+}
+.category-pill.child { /* normal children – inherit .category-pill base */ }
+
+/* Items */
+.items-container { display:flex; flex-direction:column; gap:.75rem; padding-top:.9rem; }
+
+.item-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden; transition:.2s;
+  position:relative;
+}
+.item-card:hover { border-color:var(--primary); }
+.item-header {
+  display:flex; gap:.75rem; padding:.85rem 1rem; cursor:pointer;
+  align-items:flex-start;
+}
+.item-main { flex:1; min-width:0; }
+.item-title-row { display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; }
+.item-title { margin:0; font-size:1rem; font-weight:600; }
+.item-price { font-weight:700; color:var(--primary); white-space:nowrap; font-size:.95rem; }
+.item-desc {
+  font-size:.75rem; color:var(--text-muted); margin-top:.25rem;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.item-card.expanded .item-desc { -webkit-line-clamp:unset; }
+
+.expand-icon { font-size:1rem; color:var(--text-muted); transition:.3s; margin-top:.2rem; }
+.item-card.expanded .expand-icon { transform:rotate(180deg); }
+
+.item-details {
+  max-height:0;
+  overflow:hidden;
+  background:var(--background);
+  border-top:1px solid var(--border);
+  transition:max-height .4s ease;
+}
+.item-card.expanded .item-details { /* max-height set inline via JS */ }
+
+.item-details-inner { padding:1rem 1rem 1.2rem; display:flex; flex-direction:column; gap:1rem; }
+
+.option-group { display:flex; flex-direction:column; gap:.5rem; }
+.option-group.disabled { opacity:.5; }
+
+.option-label { font-size:.8rem; font-weight:600; color:var(--text); }
+.option-label.required::after { content:" *"; color:var(--danger); }
+.option-hint { font-size:.63rem; color:var(--text-muted); }
+
+.badge-row { display:flex; flex-wrap:wrap; gap:.4rem; }
+
+.option-badge {
+  background:var(--border); color:var(--text); padding:.45rem .7rem;
+  font-size:.7rem; font-weight:500; border-radius:6px;
+  cursor:pointer; user-select:none; border:2px solid transparent;
+  transition:.15s;
+}
+.option-badge:hover { background:var(--primary); color:#fff; }
+.option-badge.selected {
+  background:var(--primary); color:#fff; border-color:var(--primary-hover);
+}
+.option-badge.locked { opacity:.4; cursor:not-allowed; }
+
+.add-to-cart-btn {
+  width:100%; background:var(--success); color:#fff;
+  border:none; border-radius:var(--radius); padding:.75rem .9rem;
+  font-weight:600; cursor:pointer; font-size:.9rem; transition:.15s;
+}
+.add-to-cart-btn:disabled { background:var(--border); color:var(--text-muted); cursor:not-allowed; }
+
+/* Cart */
+.cart-drawer {
+  position:fixed; top:0; right:-420px; width:420px; max-width:100%;
+  height:100vh; background:var(--surface); box-shadow:-4px 0 12px rgba(0,0,0,.15);
+  transition:.3s; z-index:999;
+  display:flex; flex-direction:column;
+}
+.cart-drawer.open { right:0; }
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.5);
+  opacity:0; visibility:hidden; transition:.3s; z-index:998;
+}
+.overlay.show { opacity:1; visibility:visible; }
+
+.cart-header {
+  padding:1rem .9rem; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.cart-title { margin:0; font-size:1rem; font-weight:600; }
+.close-cart {
+  background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);
+}
+
+.cart-items { flex:1; overflow-y:auto; padding:.75rem .9rem; }
+.cart-item {
+  display:flex; justify-content:space-between; gap:.6rem;
+  border-bottom:1px solid var(--border); padding:.65rem 0;
+}
+.cart-item:last-child { border-bottom:none; }
+.cart-item-info { flex:1; }
+.cart-item-name { font-size:.85rem; font-weight:600; margin:0 0 .15rem; }
+.cart-item-options { font-size:.65rem; color:var(--text-muted); margin-bottom:.25rem; }
+.cart-item-price { font-size:.75rem; font-weight:700; color:var(--primary); }
+.remove-item {
+  background:var(--danger); color:#fff; border:none; font-size:.6rem;
+  padding:.35rem .5rem; border-radius:4px; cursor:pointer; height:fit-content;
+}
+
+.cart-footer {
+  padding:.9rem .9rem 1.1rem; border-top:1px solid var(--border);
+  background:var(--background); display:flex; flex-direction:column; gap:.6rem;
+}
+.cart-total { font-weight:700; text-align:center; font-size:.95rem; }
+.checkout-btn {
+  background:var(--primary); color:#fff; border:none; border-radius:var(--radius);
+  padding:.75rem .9rem; font-weight:600; font-size:.9rem; cursor:pointer;
+}
+.checkout-btn:disabled { background:var(--border); color:var(--text-muted); cursor:not-allowed; }
+.empty-cart { text-align:center; font-size:.8rem; color:var(--text-muted); padding:1.2rem .3rem; }
+
+.loading, .error { text-align:center; padding:2rem .5rem; font-size:.9rem; }
+.error { color:var(--danger); }
+
+@media (max-width:720px) {
+  .item-title-row { flex-direction:column; align-items:flex-start; }
+  .cart-drawer { width:100%; right:-100%; }
+  .category-bar-wrap { top:54px; }
+}
+</style>
+</head>
+<body>
+<header class="header">
+  <h1 class="logo">Barnwell Grill</h1>
+  <button class="cart-btn" id="cartBtn">🛒 Cart <span class="cart-count" id="cartCount">0</span></button>
+</header>
+
+<div class="category-bar-wrap">
+  <div id="categoryNav" class="category-nav"></div>
+</div>
+
+<main class="main">
+  <div id="itemsMount" class="items-container">
+    <div class="loading">Loading menu…</div>
+  </div>
+</main>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-header">
+    <h3 class="cart-title">Your Order</h3>
+    <button class="close-cart" id="closeCart" aria-label="Close cart">×</button>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div class="empty-cart">Your cart is empty</div>
+  </div>
+  <div class="cart-footer">
+    <div id="cartTotal" class="cart-total">Total: £0.00</div>
+    <button id="checkoutBtn" class="checkout-btn" disabled>Proceed to Checkout</button>
+  </div>
+</div>
+
+<script>
+class BarnwellOrderingSystem {
+  constructor() {
+    this.API_URL = 'https://us-central1-barnwell-grill.cloudfunctions.net/getCatalog';
+    this.REQUEST_TYPES = 'ITEM,ITEM_VARIATION,CATEGORY,MODIFIER_LIST,ITEM_OPTION';
+
+    // Leaf categories in desired final order (excluding those inside groups below)
+    this.CATEGORY_ORDER = [
+      'Special Offers',
+      'Chargrilled Burgers',
+      'Chargrilled Kebabs',
+      'Mixed Kebabs',
+      'Wraps',
+      'Sides',
+      'Sauces',
+      'Desserts'
+    ];
+
+    // Parent groups with child category names (leaf names)
+    this.CATEGORY_GROUPS = [
+      { parent: 'Pizzas', children: ['9" Pizzas','12" Pizzas','15" Pizzas'] },
+      { parent: 'Drinks', children: ['Cans - 330ml','Bottles - 1.5L'] }
+    ];
+
+    this.expandedGroups = new Set();
+
+    this.categoriesById = {};
+    this.itemsById = {};
+    this.variationsByItemId = {};
+    this.modifierListsById = {};
+    this.itemOptionsById = {};
+    this.itemsByCategoryId = {};
+
+    this.activeCategoryId = null;
+    this.cart = [];
+
+    this.el = {
+      categoryNav : document.getElementById('categoryNav'),
+      itemsMount  : document.getElementById('itemsMount'),
+      cartBtn     : document.getElementById('cartBtn'),
+      cartDrawer  : document.getElementById('cartDrawer'),
+      overlay     : document.getElementById('overlay'),
+      closeCart   : document.getElementById('closeCart'),
+      cartCount   : document.getElementById('cartCount'),
+      cartItems   : document.getElementById('cartItems'),
+      cartTotal   : document.getElementById('cartTotal'),
+      checkoutBtn : document.getElementById('checkoutBtn')
+    };
+
+    this.bindGlobalEvents();
+    this.loadCatalog();
+  }
+
+  log(...a){ console.log('[Barnwell]',...a); }
+
+  async loadCatalog() {
+    try {
+      this.el.itemsMount.innerHTML = '<div class="loading">Loading menu…</div>';
+      const r = await fetch(`${this.API_URL}?types=${this.REQUEST_TYPES}`);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data = await r.json();
+      const objects = data.objects || [];
+      this.normalise(objects);
+      this.buildCategoryNav();
+      // Activate first available child category
+      const first = this.el.categoryNav.querySelector('.category-pill.child');
+      if(first) this.setActiveCategory(first.dataset.category);
+    } catch(e){
+      this.el.itemsMount.innerHTML =
+        `<div class="error">Failed to load menu: ${e.message}<br><button onclick="location.reload()">Retry</button></div>`;
+    }
+  }
+
+  normalise(objects){
+    objects.forEach(o=>{
+      switch(o.type){
+        case 'CATEGORY':
+          this.categoriesById[o.id]={ id:o.id, name:o.category_data?.name || 'Unnamed' };
+          break;
+        case 'ITEM':
+          this.itemsById[o.id]={ id:o.id, ...o.item_data };
+          break;
+        case 'ITEM_VARIATION':
+          const v={ id:o.id, ...o.item_variation_data };
+          if(!this.variationsByItemId[v.item_id]) this.variationsByItemId[v.item_id]=[];
+          this.variationsByItemId[v.item_id].push(v);
+          break;
+        case 'MODIFIER_LIST':
+          this.modifierListsById[o.id]={ id:o.id, ...o.modifier_list_data };
+          break;
+        case 'ITEM_OPTION':
+          this.itemOptionsById[o.id]={ id:o.id, ...o.item_option_data };
+          break;
+      }
+    });
+
+    Object.values(this.itemsById).forEach(item=>{
+      const catId = this.resolvePrimaryCategory(item);
+      if(!this.itemsByCategoryId[catId]) this.itemsByCategoryId[catId]=[];
+      this.itemsByCategoryId[catId].push(item.id);
+    });
+  }
+
+  resolvePrimaryCategory(item){
+    if(Array.isArray(item.categories)&&item.categories.length) return item.categories[0].id;
+    if(item.reporting_category?.id) return item.reporting_category.id;
+    if(item.category_id) return item.category_id;
+    if(Array.isArray(item.category_path_to_root)&&item.category_path_to_root.length)
+      return item.category_path_to_root[item.category_path_to_root.length-1];
+    return 'uncategorized';
+  }
+
+  buildCategoryNav(){
+    const nameToId = {};
+    Object.values(this.categoriesById).forEach(c=>{ nameToId[c.name]=c.id; });
+
+    // Build ordered list of group parents + children
+    let html='';
+
+    this.CATEGORY_GROUPS.forEach(g=>{
+      // Filter children that actually exist & have items
+      const childPairs = g.children
+        .map(n=>({ name:n, id:nameToId[n], count:(nameToId[n] && (this.itemsByCategoryId[nameToId[n]]||[]).length)||0 }))
+        .filter(c=>c.id && c.count>0);
+      if(!childPairs.length) return; // skip group if no children with items
+      const parentHasActive = childPairs.some(c=>c.id===this.activeCategoryId);
+      const expanded = parentHasActive || this.expandedGroups.has(g.parent);
+      const parentClasses = ['category-pill','parent', expanded?'expanded':''].join(' ');
+      html += `<div class="${parentClasses}" data-group="${g.parent}">${g.parent}</div>`;
+      if(expanded){
+        childPairs.forEach(c=>{
+          html += `<div class="category-pill child" data-category="${c.id}">${c.name}</div>`;
+        });
+      }
+    });
+
+    // Add remaining standalone categories in custom order, then any leftovers
+    const groupedChildrenNames = new Set(this.CATEGORY_GROUPS.flatMap(g=>g.children));
+    const alreadyRenderedIds = new Set(html.match(/data-category="([^"]+)"/g)?.map(m=>m.split('"')[1])||[]);
+
+    this.CATEGORY_ORDER.forEach(name=>{
+      if(groupedChildrenNames.has(name)) return;
+      const id = nameToId[name];
+      const count = id ? (this.itemsByCategoryId[id]||[]).length : 0;
+      if(id && count>0 && !alreadyRenderedIds.has(id)){
+        html += `<div class="category-pill child" data-category="${id}">${name}</div>`;
+        alreadyRenderedIds.add(id);
+      }
+    });
+
+    // Leftover categories (not in config) optionally append
+    Object.values(this.categoriesById).forEach(c=>{
+      if(alreadyRenderedIds.has(c.id)) return;
+      const count=(this.itemsByCategoryId[c.id]||[]).length;
+      if(count>0){
+        html += `<div class="category-pill child" data-category="${c.id}">${c.name}</div>`;
+      }
+    });
+
+    this.el.categoryNav.innerHTML = html;
+
+    this.el.categoryNav.onclick = (e)=>{
+      const parent = e.target.closest('.category-pill.parent');
+      const child = e.target.closest('.category-pill.child');
+      if(parent){
+        const groupName = parent.dataset.group;
+        if(this.expandedGroups.has(groupName)) {
+          this.expandedGroups.delete(groupName);
+        } else {
+          this.expandedGroups.add(groupName);
+        }
+        this.buildCategoryNav();
+        // If expanding, auto select first child if none active within
+        if(this.expandedGroups.has(groupName)){
+          const firstChild = [...this.el.categoryNav.querySelectorAll('.category-pill.child')]
+            .find(p=>p.previousElementSibling && p.previousElementSibling.dataset.group===groupName);
+          if(firstChild) this.setActiveCategory(firstChild.dataset.category);
+        }
+        return;
+      }
+      if(child){
+        this.setActiveCategory(child.dataset.category);
+      }
+    };
+  }
+
+  setActiveCategory(categoryId){
+    this.activeCategoryId = categoryId;
+    // Re-render nav to reflect active highlight inside groups
+    this.buildCategoryNav();
+    this.renderCategoryItems(categoryId);
+  }
+
+  renderCategoryItems(categoryId){
+    const itemIds = this.itemsByCategoryId[categoryId] || [];
+    if(!itemIds.length){
+      this.el.itemsMount.innerHTML = '<div class="loading">No items in this category.</div>';
+      return;
+    }
+    this.el.itemsMount.innerHTML = itemIds.map(id=>this.renderItemCard(this.itemsById[id])).join('');
+    this.bindItemCardEvents();
+  }
+
+  formatPrice(a){ return a==null?'':'£'+(a/100).toFixed(2); }
+
+  lowestVariationPrice(itemId){
+    const vars=this.variationsByItemId[itemId]||[];
+    if(!vars.length) return null;
+    return [...vars].sort((a,b)=>(a.price_money?.amount||0)-(b.price_money?.amount||0))[0].price_money?.amount || null;
+  }
+
+  renderItemCard(item){
+    const vars=this.variationsByItemId[item.id]||[];
+    const singleVar = vars.length===1?vars[0]:null;
+    const collapsedPrice = singleVar? singleVar.price_money?.amount : this.lowestVariationPrice(item.id);
+    const desc=(item.description_plaintext||item.description||'').replace(/</g,'&lt;');
+
+    return `
+      <div class="item-card" data-item-id="${item.id}">
+        <div class="item-header">
+          <div class="item-main">
+            <div class="item-title-row">
+              <h3 class="item-title">${item.name}</h3>
+              ${collapsedPrice!=null?`<div class="item-price">${this.formatPrice(collapsedPrice)}</div>`:''}
+            </div>
+            ${desc?`<div class="item-desc">${desc}</div>`:''}
+          </div>
+          <div class="expand-icon">⌄</div>
+        </div>
+        <div class="item-details">
+          <div class="item-details-inner">
+            ${this.renderVariationsBlock(vars)}
+            ${this.renderModifierBlocks(item)}
+            ${this.renderItemOptions(item)}
+            <button class="add-to-cart-btn" disabled>Add to Cart</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderVariationsBlock(vars){
+    if(!vars.length) return '';
+    if(vars.length===1){
+      return `<input type="hidden" class="auto-variation" value="${vars[0].id}" data-price="${vars[0].price_money?.amount||0}" />`;
+    }
+    return `
+      <div class="option-group" data-group-type="variation" data-min="1" data-max="1">
+        <div class="option-label required">Choose a size</div>
+        <div class="badge-row">
+          ${vars.map(v=>`
+            <span class="option-badge" data-kind="variation" data-id="${v.id}" data-price="${v.price_money?.amount||0}">
+              ${v.name} ${v.price_money?this.formatPrice(v.price_money.amount):''}
+            </span>`).join('')}
+        </div>
+        <div class="option-hint">Choose 1</div>
+      </div>
+    `;
+  }
+
+  renderModifierBlocks(item){
+    if(!Array.isArray(item.modifier_list_info)||!item.modifier_list_info.length) return '';
+    let html='';
+    item.modifier_list_info
+      .filter(i=>i.enabled!==false && i.hidden_from_customer!==true)
+      .sort((a,b)=>(a.ordinal||0)-(b.ordinal||0))
+      .forEach(info=>{
+        const list=this.modifierListsById[info.modifier_list_id];
+        if(!list) return;
+        let minSel=(info.min_selected_modifiers!=null && info.min_selected_modifiers!==-1)
+          ? info.min_selected_modifiers
+          : (list.min_selected_modifiers!=null && list.min_selected_modifiers!==-1
+              ? list.min_selected_modifiers : 0);
+        let maxSel=(info.max_selected_modifiers!=null && info.max_selected_modifiers!==-1)
+          ? info.max_selected_modifiers
+          : (list.max_selected_modifiers!=null && list.max_selected_modifiers!==-1
+              ? list.max_selected_modifiers
+              : (list.selection_type==='SINGLE'?1:99));
+        const required = minSel>0;
+        const isSingle = maxSel===1;
+        const hint = isSingle
+          ? 'Choose 1'
+          : (required
+              ? `Select at least ${minSel}${maxSel<99?`, up to ${maxSel}`:''}`
+              : `Optional${maxSel<99?`, up to ${maxSel}`:''}`);
+        html += `
+          <div class="option-group" data-group-type="modifier" data-min="${minSel}" data-max="${maxSel}">
+            <div class="option-label ${required?'required':''}">${list.name}</div>
+            <div class="badge-row">
+              ${list.modifiers.map(m=>{
+                const md=m.modifier_data;
+                if(!md) return '';
+                const price=md.price_money?.amount||0;
+                const def= md.on_by_default ? 'data-default="1"' : '';
+                return `<span class="option-badge" data-kind="modifier" data-id="${m.id}" data-price="${price}" ${def}>
+                  ${md.name}${price?' '+this.formatPrice(price):''}
+                </span>`;
+              }).join('')}
+            </div>
+            <div class="option-hint">${hint}</div>
+          </div>
+        `;
+      });
+    return html;
+  }
+
+  renderItemOptions(item){
+    const optionIds=item.item_option_ids || (item.item_options||[]).map(o=>o.item_option_id);
+    if(!Array.isArray(optionIds)||!optionIds.length) return '';
+    let html='';
+    optionIds.forEach(oid=>{
+      const opt=this.itemOptionsById[oid];
+      if(!opt||!Array.isArray(opt.values)||!opt.values.length) return;
+      const single = opt.selection_type==='SINGLE';
+      const min=0, max=single?1:99;
+      const hint= single? 'Choose 1':'Optional';
+      html += `
+        <div class="option-group" data-group-type="item_option" data-min="${min}" data-max="${max}">
+          <div class="option-label">${opt.name}</div>
+          <div class="badge-row">
+            ${opt.values.map(v=>{
+              const vd=v.item_option_value_data; const price=vd?.price_money?.amount||0;
+              return `<span class="option-badge" data-kind="item_option" data-id="${v.id}" data-price="${price}">
+                ${vd?.name||'Option'}${price?' '+this.formatPrice(price):''}
+              </span>`;
+            }).join('')}
+          </div>
+          <div class="option-hint">${hint}</div>
+        </div>
+      `;
+    });
+    return html;
+  }
+
+  bindGlobalEvents(){
+    this.el.cartBtn.addEventListener('click',()=>this.toggleCart(true));
+    this.el.closeCart.addEventListener('click',()=>this.toggleCart(false));
+    this.el.overlay.addEventListener('click',()=>this.toggleCart(false));
+    this.el.checkoutBtn.addEventListener('click',()=>this.checkout());
+  }
+
+  bindItemCardEvents(){
+    this.el.itemsMount.querySelectorAll('.item-card .item-header').forEach(h=>{
+      h.addEventListener('click',()=>{
+        const card=h.closest('.item-card');
+        const details=card.querySelector('.item-details');
+        const isOpen=card.classList.contains('expanded');
+        // Close others
+        this.el.itemsMount.querySelectorAll('.item-card.expanded').forEach(c=>{
+          if(c!==card){
+            c.classList.remove('expanded');
+            const d=c.querySelector('.item-details');
+            if(d) d.style.maxHeight=0;
+          }
+        });
+        if(!isOpen){
+          card.classList.add('expanded');
+          this.ensureDefaults(card);
+          this.recalculateCardPrice(card);
+          details.style.maxHeight = details.scrollHeight + 'px';
+        } else {
+          card.classList.remove('expanded');
+          details.style.maxHeight = 0;
+        }
+      });
+    });
+
+    this.el.itemsMount.querySelectorAll('.item-card').forEach(card=>{
+      card.addEventListener('click', e=>{
+        const badge=e.target.closest('.option-badge');
+        if(!badge) return;
+        this.handleBadgeToggle(card,badge);
+      });
+    });
+
+    this.el.itemsMount.querySelectorAll('.item-card .add-to-cart-btn').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const card=e.target.closest('.item-card');
+        this.addCardToCart(card);
+      });
+    });
+  }
+
+  ensureDefaults(card){
+    const autoVar=card.querySelector('.auto-variation');
+    if(autoVar){
+      card.dataset.variationId=autoVar.value;
+      card.dataset.variationPrice=autoVar.dataset.price;
+    }
+    // Modifiers
+    card.querySelectorAll('.option-group[data-group-type="modifier"]').forEach(group=>{
+      const min=parseInt(group.dataset.min||'0',10);
+      // Preselect defaults
+      group.querySelectorAll('.option-badge[data-default="1"]').forEach(b=>b.classList.add('selected'));
+      let selected = group.querySelectorAll('.option-badge.selected').length;
+      if(selected < min){
+        [...group.querySelectorAll('.option-badge:not(.selected)')]
+          .slice(0, min - selected)
+          .forEach(b=>b.classList.add('selected'));
+      }
+    });
+  }
+
+  handleBadgeToggle(card,badge){
+    const group = badge.closest('.option-group');
+    if(!group) return;
+    const min = parseInt(group.dataset.min||'0',10);
+    const max = parseInt(group.dataset.max||'99',10);
+    const kind = badge.dataset.kind;
+    const isSelected = badge.classList.contains('selected');
+
+    if(kind==='variation'){
+      group.querySelectorAll('.option-badge').forEach(b=>b.classList.remove('selected'));
+      badge.classList.add('selected');
+      this.recalculateCardPrice(card);
+      return;
+    }
+
+    const selectedNow = [...group.querySelectorAll('.option-badge.selected')];
+
+    if(max===1){
+      // Single-select logic: clicking another replaces even if min=1
+      if(isSelected){
+        // Only allow deselect if above min (i.e., min==0)
+        if(min===0){
+          badge.classList.remove('selected');
+        }
+      } else {
+        selectedNow.forEach(b=>b.classList.remove('selected'));
+        badge.classList.add('selected');
+      }
+    } else {
+      if(isSelected){
+        if(selectedNow.length > min){
+          badge.classList.remove('selected');
+        }
+      } else {
+        if(selectedNow.length >= max){
+          badge.classList.add('locked');
+          setTimeout(()=>badge.classList.remove('locked'),300);
+          return;
+        }
+        badge.classList.add('selected');
+      }
+    }
+
+    this.recalculateCardPrice(card);
+  }
+
+  recalculateCardPrice(card){
+    const itemId=card.dataset.itemId;
+    const vars=this.variationsByItemId[itemId]||[];
+    let total=0;
+    let variationName='';
+
+    if(vars.length===1){
+      total = vars[0].price_money?.amount||0;
+      variationName = vars[0].name;
+      card.dataset.variationId = vars[0].id;
+    } else if(vars.length>1){
+      const sel=card.querySelector('.option-badge[data-kind="variation"].selected');
+      if(sel){
+        total += parseInt(sel.dataset.price||'0',10);
+        const vid=sel.dataset.id;
+        const vObj=vars.find(v=>v.id===vid);
+        variationName = vObj?.name||'';
+        card.dataset.variationId=vid;
+      }
+    }
+
+    card.querySelectorAll('.option-badge[data-kind="modifier"].selected')
+      .forEach(b=> total += parseInt(b.dataset.price||'0',10));
+    card.querySelectorAll('.option-badge[data-kind="item_option"].selected')
+      .forEach(b=> total += parseInt(b.dataset.price||'0',10));
+
+    let requiredOK=true;
+    card.querySelectorAll('.option-group').forEach(group=>{
+      const gmin=parseInt(group.dataset.min||'0',10);
+      if(gmin>0){
+        const count=group.querySelectorAll('.option-badge.selected').length;
+        if(count<gmin) requiredOK=false;
+      }
+      if(group.dataset.groupType==='variation' && vars.length>1){
+        if(!group.querySelector('.option-badge.selected')) requiredOK=false;
+      }
+    });
+
+    const btn=card.querySelector('.add-to-cart-btn');
+    btn.disabled=!requiredOK;
+    btn.textContent = requiredOK ? `Add to Cart ${this.formatPrice(total)}` : 'Select required options';
+
+    card.dataset.totalPrice=total;
+    card.dataset.chosenVariationName=variationName;
+
+    this.adjustCardHeight(card);
+  }
+
+  adjustCardHeight(card){
+    if(!card.classList.contains('expanded')) return;
+    const details=card.querySelector('.item-details');
+    details.style.maxHeight = details.scrollHeight + 'px';
+  }
+
+  addCardToCart(card){
+    const itemId=card.dataset.itemId;
+    const item=this.itemsById[itemId];
+    const total=parseInt(card.dataset.totalPrice||'0',10);
+    const variationName=card.dataset.chosenVariationName;
+    const selections=[];
+    if(variationName) selections.push(variationName);
+    card.querySelectorAll('.option-badge[data-kind="modifier"].selected').forEach(b=>selections.push(b.textContent.trim()));
+    card.querySelectorAll('.option-badge[data-kind="item_option"].selected').forEach(b=>selections.push(b.textContent.trim()));
+
+    this.cart.push({
+      id: Date.now()+Math.random(),
+      itemId,
+      name: item.name + (variationName?` (${variationName})`:''),
+      options: selections,
+      price: total
+    });
+    this.updateCartUI();
+
+    // Collapse
+    const details=card.querySelector('.item-details');
+    card.classList.remove('expanded');
+    details.style.maxHeight=0;
+  }
+
+  updateCartUI(){
+    this.el.cartCount.textContent=this.cart.length;
+    if(!this.cart.length){
+      this.el.cartItems.innerHTML='<div class="empty-cart">Your cart is empty</div>';
+      this.el.cartTotal.textContent='Total: £0.00';
+      this.el.checkoutBtn.disabled=true;
+      return;
+    }
+    const total=this.cart.reduce((s,i)=>s+i.price,0);
+    this.el.cartItems.innerHTML=this.cart.map((c,i)=>`
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${c.name}</div>
+          ${c.options.length?`<div class="cart-item-options">${c.options.join(', ')}</div>`:''}
+          <div class="cart-item-price">${this.formatPrice(c.price)}</div>
+        </div>
+        <button class="remove-item" data-index="${i}">Remove</button>
+      </div>
+    `).join('');
+    this.el.cartItems.querySelectorAll('.remove-item').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const idx=parseInt(btn.dataset.index,10);
+        this.cart.splice(idx,1);
+        this.updateCartUI();
+      });
+    });
+    this.el.cartTotal.textContent='Total: '+this.formatPrice(total);
+    this.el.checkoutBtn.disabled=false;
+  }
+
+  toggleCart(open){
+    if(open===true){
+      this.el.cartDrawer.classList.add('open');
+      this.el.overlay.classList.add('show');
+    } else if(open===false){
+      this.el.cartDrawer.classList.remove('open');
+      this.el.overlay.classList.remove('show');
+    } else {
+      const isOpen=this.el.cartDrawer.classList.contains('open');
+      this.toggleCart(!isOpen);
+    }
+  }
+
+  checkout(){
+    if(!this.cart.length) return;
+    alert('Checkout placeholder – integrate order submission.');
+    console.log('Cart payload:', this.cart);
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>new BarnwellOrderingSystem());
+</script>
+</body>
+</html>
