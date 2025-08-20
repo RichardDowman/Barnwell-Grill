@@ -1,0 +1,1022 @@
+// Barnwell Grill — single-file bundle (injects CSS + HTML + then runs your app)
+// Edit this file only. When you commit changes, bump ?v= in GoodBarber to refresh.
+
+(function () {
+  // -------- 1) CSS (from your <style>...</style>) --------
+  const CSS = `
+:root {
+  --primary:#2563eb; --primary-hover:#1d4ed8;
+  --text:#1e293b; --text-muted:#64748b;
+  --background:#f8fafc; --surface:#ffffff;
+  --border:#e2e8f0; --radius:10px; --shadow:0 4px 6px -1px rgba(0,0,0,.1);
+}
+
+* { box-sizing:border-box; }
+html,body{height:100%}
+body {
+  margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--background); color:var(--text); line-height:1.45;
+}
+body.modal-open{overflow:hidden}
+
+/* Header */
+.header{
+  position:sticky; top:0; z-index:110; background:var(--surface);
+  box-shadow:var(--shadow); padding:12px 16px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.logo{font-weight:800;color:var(--primary);font-size:18px;margin:0}
+.cart-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--primary); color:#fff; border:none;
+  padding:8px 12px; font-weight:800; cursor:pointer; font-size:14px;
+  border-radius:10px;
+}
+.cart-count{background:#fff;color:var(--primary);padding:3px 8px;border-radius:8px;font-weight:900;font-size:12px}
+
+/* Category nav */
+.category-bar-wrap{position:sticky;top:56px;z-index:105;background:var(--background);padding:10px;}
+.category-nav{display:flex;gap:8px;overflow-x:auto;padding:4px;align-items:center; position:relative}
+.category-nav::-webkit-scrollbar{height:8px}
+.category-pill{
+  background:var(--surface); border:1px solid var(--border); color:var(--text-muted);
+  padding:8px 10px; font-weight:700; font-size:13px; cursor:pointer;
+  border-radius:10px; min-height:36px; display:inline-flex; align-items:center; justify-content:center;
+  flex:0 0 auto;
+  min-width:84px; text-align:center;
+}
+.category-pill.child{ background:var(--surface); color:var(--text-muted); }
+.category-pill.child.selected{ background:var(--primary); color:#fff; border-color:var(--primary); }
+
+/* Items */
+.items-container{ padding:12px; display:flex; flex-direction:column; gap:12px; max-width:1000px; margin:0 auto; }
+.item-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.item-header{ display:flex; gap:12px; padding:12px; cursor:pointer; align-items:flex-start; }
+.item-title{ margin:0;font-weight:800; font-size:15px }
+.item-price{ font-weight:900; color:var(--primary) }
+.item-desc{ color:var(--text-muted); font-size:13px; margin-top:6px; display:block }
+.item-details{ max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:1px solid var(--border) }
+.item-details-inner{ padding:12px; display:flex; flex-direction:column; gap:10px }
+
+/* options */
+.option-group{ margin-bottom:8px; }
+.badge-row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.option-badge{
+  background:#f1f5f9; padding:6px 10px; border-radius:8px; cursor:pointer; border:2px solid transparent;
+  font-weight:700; display:inline-flex; align-items:center; justify-content:center;
+  min-height:36px; min-width:84px; flex:0 0 auto; white-space:nowrap;
+}
+.option-badge.selected{ background:var(--primary); color:#fff; border-color:var(--primary-hover) }
+.option-badge.locked{ opacity:.6; }
+
+/* Add to cart */
+.add-to-cart-btn{
+  background: linear-gradient(180deg,var(--primary),var(--primary-hover));
+  color:#fff; border:none; padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:900; width:100%;
+  box-shadow: 0 8px 20px rgba(37,99,235,0.12); margin-top:6px; display:block;
+}
+.add-to-cart-btn[disabled]{ opacity:0.55; cursor:not-allowed; box-shadow:none; }
+
+/* Cart drawer */
+.cart-drawer{
+  position:fixed; top:0; right:-460px; width:420px; max-width:100%; height:100vh; background:var(--surface);
+  box-shadow:-6px 0 20px rgba(0,0,0,.18); transition:right .28s ease; z-index:999; display:flex; flex-direction:column;
+  border-left:1px solid rgba(0,0,0,.04);
+}
+.cart-drawer.open{ right:0 }
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,.45); opacity:0; visibility:hidden; transition:.25s; z-index:998 }
+.overlay.show{ opacity:1; visibility:visible }
+
+/* cart header/footer and content */
+.cart-header{ display:flex; align-items:center; gap:8px; padding:14px; border-bottom:1px solid var(--border); justify-content:flex-start }
+.back-btn{ background:transparent;border:0; cursor:pointer; padding:6px; border-radius:8px; display:inline-flex; align-items:center; gap:8px }
+.cart-title{ font-weight:900;margin-left:4px; font-size:16px }
+.cart-items{ padding:12px; overflow:auto; flex:1 }
+.cart-footer{ padding:12px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:10px; background:var(--background) }
+
+/* cart item rows */
+.cart-item{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--border) }
+.cart-item-info{ min-width:0; display:flex; flex-direction:column; gap:6px }
+.cart-item-name{ font-weight:800; font-size:14px; color:var(--text) }
+.cart-item-options{ font-size:13px; color:var(--text-muted) }
+.cart-controls{ display:flex; flex-direction:column; align-items:flex-end; gap:8px }
+.qty-wrap{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border); padding:4px 8px; border-radius:999px; background:#fff }
+.qty-btn{ background:#fff; border:1px solid rgba(0,0,0,.06); padding:6px 8px; border-radius:6px; cursor:pointer; font-weight:800 }
+.qty-val{ min-width:28px; text-align:center; font-weight:800 }
+.cart-line-total{ font-weight:900; color:var(--primary) }
+.remove-item{ background:#fff; border:1px solid #f3d1d1; color:#b91c1c; padding:6px 8px; border-radius:8px; cursor:pointer }
+
+/* checkout overlay */
+.checkout-overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1100 }
+.checkout-overlay.visible{ display:flex; background:rgba(5,6,7,0.55) }
+.checkout-card{
+  width:min(1040px,96vw); height:min(92vh,960px); background:var(--surface); border-radius:12px; padding:18px;
+  box-shadow:0 12px 30px rgba(2,6,23,.18); display:grid; grid-template-columns:1fr 380px; gap:18px; overflow:auto;
+}
+@media (max-width:1020px){ .checkout-card{ grid-template-columns:1fr; height:100vh; width:100vw; border-radius:0; padding:14px } }
+
+/* checkout left form */
+.checkout-left{ padding-right:6px }
+.form-title{ font-weight:900; margin:10px 0 6px; font-size:14px; color:var(--text) }
+.checkout-left .field{ margin-bottom:12px }
+.input{ width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); background:#f8fafc }
+
+/* summary */
+.checkout-right{ padding-left:6px; border-left:1px dashed rgba(59,130,246,0.06) }
+.map-mini{ height:210px; border-radius:8px; border:1px solid var(--border); overflow:hidden; margin-top:8px; display:none }
+
+/* address picker (unused now but kept) */
+.addr-picker{ position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.45) }
+.addr-picker.show{ display:flex }
+.addr-picker-card{ width:min(560px,94vw); max-height:80vh; overflow:auto; background:#fff; border-radius:12px; padding:14px; border:1px solid var(--border) }
+.addr-item{ padding:10px; border:1px solid var(--border); border-radius:10px; cursor:pointer; margin-bottom:8px }
+
+/* small helper text */
+.helper{ font-size:13px; color:var(--text-muted); margin-top:6px }
+.admin-hint{ font-size:13px; color:#b91c1c; margin-top:8px; background:#fff6f6;padding:8px;border-radius:8px;border:1px solid #fdecea }
+
+/* checkout button */
+.checkout-btn{ background:var(--primary); color:#fff; border:none; border-radius:10px; padding:12px 14px; font-weight:800; cursor:pointer; font-size:14px; display:inline-block }
+.checkout-btn[disabled]{ opacity:.5; cursor:not-allowed }
+`;
+
+  // -------- 2) HTML (everything from inside your <body>...</body>, no <script> tags) --------
+  const HTML = `
+<header class="header">
+  <h1 class="logo">Barnwell Grill</h1>
+  <button id="cartBtn" class="cart-btn" aria-label="Open cart">🛒 Cart <span id="cartCount" class="cart-count">0</span></button>
+</header>
+
+<div class="category-bar-wrap">
+  <div id="categoryNav" class="category-nav" role="tablist" aria-label="Categories"></div>
+</div>
+
+<main style="padding:12px">
+  <div id="itemsMount" class="items-container"><div class="loading">Loading menu…</div></div>
+</main>
+
+<div id="overlay" class="overlay" tabindex="-1" aria-hidden="true"></div>
+
+<!-- Cart Drawer -->
+<aside id="cartDrawer" class="cart-drawer" aria-hidden="true">
+  <div class="cart-header">
+    <button class="back-btn" id="cartBack" aria-label="Back from cart" title="Back">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M15 18l-6-6 6-6" stroke="#1f2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="cart-title">Your Order</div>
+  </div>
+
+  <div id="cartItems" class="cart-items">
+    <div class="empty-cart">Your cart is empty</div>
+  </div>
+
+  <div class="cart-footer">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:900">Total</div>
+      <div id="cartTotal" style="font-weight:900">£0.00</div>
+    </div>
+    <button id="checkoutBtn" class="checkout-btn" disabled>Proceed to checkout</button>
+  </div>
+</aside>
+
+<!-- Checkout Overlay -->
+<div id="checkoutOverlay" class="checkout-overlay" aria-hidden="true">
+  <div class="checkout-card" role="dialog" aria-modal="true" aria-label="Checkout">
+    <div class="checkout-left">
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="back-btn" id="checkoutBack" aria-label="Back from checkout" title="Back">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+              <path d="M15 18l-6-6 6-6" stroke="#1f2937" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <h3 style="margin:0;font-weight:900">Finalise your order</h3>
+        </div>
+      </div>
+
+      <!-- Your details -->
+      <div class="form-title">Your details</div>
+      <div style="margin-top:6px">
+        <div class="field"><input id="custName" class="input" placeholder="Full name" aria-label="Full name"></div>
+        <div class="field"><input id="custPhone" class="input" placeholder="Phone" aria-label="Phone"></div>
+        <div class="field"><input id="custEmail" class="input" placeholder="Email (optional)" aria-label="Email"></div>
+      </div>
+
+      <!-- Address -->
+      <div class="form-title" style="margin-top:8px">Address</div>
+      <div style="margin-top:6px">
+        <!-- Predictive field removed -->
+
+        <div id="lookupHint" class="helper" style="display:none"></div>
+        <div id="adminHint" class="admin-hint" style="display:none"></div>
+
+        <div style="margin-top:8px">
+          <div class="field"><input id="mLine1" class="input" placeholder="Address line 1 (house number and street)" aria-label="Address line 1"></div>
+          <div class="field"><input id="mLine2" class="input" placeholder="Address line 2 (optional)" aria-label="Address line 2"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input id="mCity" class="input" placeholder="Town / City" aria-label="Town or city" />
+            <input id="mPostcode" class="input" placeholder="Postcode (e.g. PE8 4QU)" aria-label="Postcode" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="saveAddrLabel" class="input" placeholder="Label this address (e.g. Home / Work)" aria-label="Address label" />
+          <button id="saveAddrBtn" class="input" style="cursor:pointer">Save this address</button>
+        </div>
+        <div style="margin-top:8px;font-size:.9rem;color:#6b7280">You must save the address before you can place the order.</div>
+      </div>
+    </div>
+
+    <aside class="checkout-right">
+      <div style="margin-bottom:8px;font-weight:900">Order summary</div>
+      <div style="margin-top:8px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span>Subtotal</span><span id="sumSubtotal">£0.00</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span id="sumDeliveryLabel">Delivery</span><span id="sumDelivery">£0.00</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:900"><span>Total</span><span id="sumTotal">£0.00</span></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="placeOrderBtn" class="checkout-btn" style="width:100%" disabled>Place order</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Address picker (unused) -->
+<div id="addrPicker" class="addr-picker" aria-hidden="true">
+  <div class="addr-picker-card" role="dialog" aria-modal="true">
+    <h4 id="addrPickerTitle">Select your address</h4>
+    <div id="addrPickerList" class="list"></div>
+    <div id="pickHouseNumber" style="display:none;margin-top:10px">
+      <div style="font-weight:700;margin-bottom:6px">Enter house number</div>
+      <div style="display:flex;gap:8px">
+        <input id="houseNumberInput" class="input" placeholder="House number or name (e.g. 12)" />
+        <button id="applyHouseNumber" class="checkout-btn" style="padding:8px 10px">Apply</button>
+      </div>
+    </div>
+    <div style="margin-top:10px"><button id="addrPickerClose" class="addr-close input" style="width:100%">Cancel</button></div>
+  </div>
+</div>
+`;
+
+  // Utility: run after DOM is ready
+  function ready(fn) {
+    if (document.readyState !== "loading") fn();
+    else document.addEventListener("DOMContentLoaded", fn);
+  }
+
+  ready(function mount() {
+    // Inject CSS
+    const style = document.createElement("style");
+    style.textContent = CSS;
+    document.head.appendChild(style);
+
+    // Inject HTML (replace #app-root if present, else prepend to body)
+    const root = document.getElementById("app-root");
+    if (root) root.outerHTML = HTML;
+    else document.body.insertAdjacentHTML("afterbegin", HTML);
+
+    // -------- 3) Your application JS (adapted: no DOMContentLoaded wrapper; we instantiate immediately) --------
+
+    /* Default the proxy base if not set yet */
+    (function(){
+      var url = "https://barnwell-proxy-869223233443.europe-west1.run.app";
+      try {
+        if(!localStorage.getItem("order_proxy_base") && !localStorage.getItem("proxyBaseUrl")){
+          localStorage.setItem("order_proxy_base", url);
+          localStorage.setItem("proxyBaseUrl", url);
+        }
+        window.PROXY_BASE = localStorage.getItem("order_proxy_base") || localStorage.getItem("proxyBaseUrl") || url;
+      } catch(e) { window.PROXY_BASE = url; }
+    })();
+
+    class BarnwellOrderingSystem {
+      constructor() {
+        this.FUNCS_BASES = [
+          "https://us-central1-barnwell-grill.cloudfunctions.net",
+          "https://europe-west2-barnwell-grill.cloudfunctions.net",
+          "https://europe-west1-barnwell-grill.cloudfunctions.net"
+        ];
+        this.CATALOG_PATHS = ["/getCatalog", "/catalog"];
+        this.REQUEST_TYPES = 'ITEM,ITEM_VARIATION,CATEGORY,MODIFIER_LIST,ITEM_OPTION';
+
+        this.CATEGORY_ORDER = [
+          'Special Offers','Chargrilled Burgers','Chargrilled Kebabs','Mixed Kebabs',
+          'Wraps','Sides','Sauces','Desserts'
+        ];
+        this.CATEGORY_GROUPS = [
+          { parent: 'Pizzas', children: ['9" Pizzas','12" Pizzas','15" Pizzas'] },
+          { parent: 'Drinks', children: ['Cans - 330ml','Bottles - 1.5L'] }
+        ];
+
+        this.categoriesById = {};
+        this.itemsById = {};
+        this.variationsByItemId = {};
+        this.modifierListsById = {};
+        this.itemOptionsById = {};
+        this.itemsByCategoryId = {};
+        this.activeCategoryId = null;
+
+        this.cart = this._getLS('barnwell_cart') || [];
+        this.cart.forEach(i=>{ if(typeof i.qty!=='number') i.qty = 1; });
+        this.savedAddresses = this._getLS('saved_addresses') || [];
+        this.cachedUserProfile = this._getLS('barnwell_user_profile') || null;
+
+        this.localKeys = {
+          get mapsKey(){ return localStorage.getItem('gmaps_key') || ''; },
+          get orderApiBase(){ return (localStorage.getItem('order_api_base') || '/api').replace(/\/+$/,''); },
+          get orderApiToken(){ return localStorage.getItem('order_api_token') || ''; },
+          get catalogUrl(){ return localStorage.getItem('catalog_url') || ''; }
+        };
+
+        this.apiProxyBase = (window.PROXY_BASE || localStorage.getItem('order_proxy_base') || localStorage.getItem('proxyBaseUrl') || '').replace(/\/+$/,'') || '';
+
+        this.selectedAddress = null;
+        this.currentQuote = null;
+        this.gbUser = null;
+        this.placesAutocomplete = null;
+        this.addressConfirmed = false;
+
+        this.el = {
+          categoryNav: document.getElementById('categoryNav'),
+          itemsMount: document.getElementById('itemsMount'),
+          cartBtn: document.getElementById('cartBtn'),
+          cartDrawer: document.getElementById('cartDrawer'),
+          overlay: document.getElementById('overlay'),
+          cartBack: document.getElementById('cartBack'),
+          cartCount: document.getElementById('cartCount'),
+          cartItems: document.getElementById('cartItems'),
+          cartTotal: document.getElementById('cartTotal'),
+          checkoutBtn: document.getElementById('checkoutBtn'),
+
+          checkoutOverlay: document.getElementById('checkoutOverlay'),
+          checkoutBack: document.getElementById('checkoutBack'),
+          placeOrderBtn: document.getElementById('placeOrderBtn'),
+
+          custName: document.getElementById('custName'),
+          custPhone: document.getElementById('custPhone'),
+          custEmail: document.getElementById('custEmail'),
+
+          addrList: document.getElementById('addrList'),
+
+          mLine1: document.getElementById('mLine1'),
+          mLine2: document.getElementById('mLine2'),
+          mCity: document.getElementById('mCity'),
+          mPostcode: document.getElementById('mPostcode'),
+          saveAddrLabel: document.getElementById('saveAddrLabel'),
+          saveAddrBtn: document.getElementById('saveAddrBtn'),
+
+          sumSubtotal: document.getElementById('sumSubtotal'),
+          sumDeliveryLabel: document.getElementById('sumDeliveryLabel'),
+          sumDelivery: document.getElementById('sumDelivery'),
+          sumTotal: document.getElementById('sumTotal'),
+
+          addrPicker: document.getElementById('addrPicker'),
+          addrPickerTitle: document.getElementById('addrPickerTitle'),
+          addrPickerList: document.getElementById('addrPickerList'),
+          addrPickerClose: document.getElementById('addrPickerClose'),
+          pickHouseNumber: document.getElementById('pickHouseNumber'),
+          houseNumberInput: document.getElementById('houseNumberInput'),
+          applyHouseNumber: document.getElementById('applyHouseNumber'),
+
+          lookupHint: document.getElementById('lookupHint'),
+          adminHint: document.getElementById('adminHint')
+        };
+
+        this._bindGlobals();
+        this._loadCatalog();
+        this._initGBUser();
+        this._renderCart();
+      }
+
+      _getLS(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
+      _setLS(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+      _formatPrice(a){ return a==null?'':'£'+(a/100).toFixed(2); }
+      _pcNorm(v){ return (v||'').toUpperCase().replace(/\s+/g,'').trim(); }
+      _pcPretty(v){ const s=this._pcNorm(v); if(!s) return ''; return s.length>3? s.slice(0,-3)+' '+s.slice(-3):s; }
+      _isUKPostcode(v){ const s=(v||'').trim().toUpperCase(); return /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/.test(s); }
+
+      async _fetchJSON(url, opts={}, timeoutMs=10000){
+        const ctrl = new AbortController();
+        const t = setTimeout(()=>ctrl.abort(), timeoutMs);
+        try {
+          let finalUrl = url;
+          if(!/^https?:\/\//i.test(url)){
+            if(!url.startsWith('/')) url = '/' + url;
+            if(this.apiProxyBase && url.startsWith('/api/')) finalUrl = this.apiProxyBase + url;
+            else finalUrl = url;
+          }
+          const headers = Object.assign({}, opts.headers || {});
+          if(!headers['Accept']) headers['Accept'] = 'application/json';
+          const r = await fetch(finalUrl, { ...opts, headers, signal: ctrl.signal });
+          clearTimeout(t);
+          if(!r.ok){
+            const txt = await r.text().catch(()=>String(r.status));
+            const err = new Error(`HTTP ${r.status} ${r.statusText} — ${txt.slice(0,200)}`);
+            err.status = r.status; err.body = txt; throw err;
+          }
+          const txt = await r.text().catch(()=>null);
+          if(!txt) return null;
+          try { return JSON.parse(txt); } catch(e){ return txt; }
+        } finally { clearTimeout(t); }
+      }
+
+      async _initGBUser(){
+        try {
+          const gb = window.gb || window.GB || null;
+          if(gb && typeof gb.getUser === 'function'){
+            const user = await gb.getUser(); if(user) this._setGBUser(user);
+          } else if (gb && gb.user){ this._setGBUser(gb.user); }
+          else if (window.gbUser){ this._setGBUser(window.gbUser); }
+        } catch(e){}
+        const prof = this.cachedUserProfile || {};
+        if(this.gbUser?.name) this.el.custName.value = this.gbUser.name; else if(prof.name) this.el.custName.value = prof.name;
+        if(this.gbUser?.email) this.el.custEmail.value = this.gbUser.email; else if(prof.email) this.el.custEmail.value = prof.email;
+        if(prof.phone) this.el.custPhone.value = prof.phone;
+      }
+      _setGBUser(u){ const id = u.id || u.user_id || u.uid || null; const name = u.name || u.fullName || (u.firstName||u.lastName ? `${u.firstName||''} ${u.lastName||''}`.trim() : null); const email = u.email || u.mail || u.userEmail || null; this.gbUser = { id, name, email }; }
+
+      async _loadCatalog(){
+        const typesQ = `?types=${encodeURIComponent(this.REQUEST_TYPES)}`;
+        const candidates = [];
+
+        if(this.localKeys.catalogUrl){
+          candidates.push(this.localKeys.catalogUrl);
+          candidates.push(this.localKeys.catalogUrl + typesQ);
+        }
+        this.FUNCS_BASES.forEach(b => this.CATALOG_PATHS.forEach(p => { candidates.push(`${b}${p}${typesQ}`); candidates.push(`${b}${p}`); }));
+        const base = this.localKeys.orderApiBase;
+        this.CATALOG_PATHS.forEach(p => { candidates.push(`${base}${p}${typesQ}`); candidates.push(`${base}${p}`); });
+        candidates.push(`${base}/squareCatalog${typesQ}`);
+        this.CATALOG_PATHS.forEach(p => { candidates.push(`${p}${typesQ}`); candidates.push(`${p}`); });
+
+        const seen = new Set(); const urls = candidates.filter(u => u && !seen.has(u) && seen.add(u));
+
+        this.el.itemsMount.innerHTML = '<div class="loading">Loading menu…</div>';
+        let lastErr = null;
+        for (let i=0;i<urls.length;i++){
+          const url = urls[i];
+          try {
+            const data = await this._fetchJSON(url, { headers:{ 'Accept':'application/json' } }, 10000);
+            const objects = data?.objects || data?.result?.objects || [];
+            if(!Array.isArray(objects) || objects.length===0) throw new Error('Empty catalogue response');
+            this._normalise(objects);
+            this._buildCategoryNav();
+            const selected = this.activeCategoryId || this.el.categoryNav.querySelector('.category-pill.child')?.dataset?.category;
+            if(selected) {
+              this._setActiveCategory(selected);
+              const btn = this.el.categoryNav.querySelector(`.category-pill.child[data-category="${selected}"]`);
+              if(btn) btn.classList.add('selected');
+            }
+            return;
+          } catch(e){ lastErr = e; console.warn('catalog fetch err', url, e); }
+        }
+
+        this.el.itemsMount.innerHTML = `<div class="error">We could not load the menu. Please check your catalogue endpoint and CORS.</div>`;
+      }
+
+      _normalise(objects){
+        objects.forEach(o=>{
+          switch(o.type){
+            case 'CATEGORY': this.categoriesById[o.id]={ id:o.id, name:o.category_data?.name || o.name || 'Unnamed' }; break;
+            case 'ITEM': this.itemsById[o.id]={ id:o.id, ...o.item_data }; break;
+            case 'ITEM_VARIATION': {
+              const v={ id:o.id, ...o.item_variation_data };
+              if(!this.variationsByItemId[v.item_id]) this.variationsByItemId[v.item_id]=[];
+              this.variationsByItemId[v.item_id].push(v);
+              break;
+            }
+            case 'MODIFIER_LIST': this.modifierListsById[o.id]={ id:o.id, ...o.modifier_list_data }; break;
+            case 'ITEM_OPTION': this.itemOptionsById[o.id]={ id:o.id, ...o.item_option_data }; break;
+          }
+        });
+        Object.values(this.itemsById).forEach(item=>{
+          const catId = this._resolvePrimaryCategory(item);
+          if(!this.itemsByCategoryId[catId]) this.itemsByCategoryId[catId]=[];
+          this.itemsByCategoryId[catId].push(item.id);
+        });
+      }
+
+      _resolvePrimaryCategory(item){
+        if(Array.isArray(item.categories)&&item.categories.length) return item.categories[0].id;
+        if(item.reporting_category?.id) return item.reporting_category.id;
+        if(item.category_id) return item.category_id;
+        if(Array.isArray(item.category_path_to_root)&&item.category_path_to_root.length)
+          return item.category_path_to_root[item.category_path_to_root.length-1];
+        return 'uncategorized';
+      }
+
+      _buildCategoryNav(){
+        const nameToId = {}; Object.values(this.categoriesById).forEach(c=>{ nameToId[c.name]=c.id; });
+        let html=''; const alreadyRenderedIds = new Set();
+
+        this.CATEGORY_GROUPS.forEach(g=>{
+          const childPairs = g.children
+            .map(n=>({ name:n, id:nameToId[n], count:(nameToId[n] && (this.itemsByCategoryId[nameToId[n]]||[]).length)||0 }))
+            .filter(c=>c.id && c.count>0);
+          if(!childPairs.length) return;
+          html += `<span class="group-sep">${g.parent}</span>`;
+          childPairs.forEach(c=> {
+            const selected = (c.id === this.activeCategoryId) ? ' selected' : '';
+            html += `<button class="category-pill child${selected}" data-category="${c.id}">${c.name}</button>`;
+            alreadyRenderedIds.add(c.id);
+          });
+        });
+
+        const groupedChildrenNames = new Set(this.CATEGORY_GROUPS.flatMap(g=>g.children));
+        this.CATEGORY_ORDER.forEach(name=>{
+          if(groupedChildrenNames.has(name)) return;
+          const id = nameToId[name];
+          const count = id ? (this.itemsByCategoryId[id]||[]).length : 0;
+          if(id && count>0 && !alreadyRenderedIds.has(id)){
+            const selected = (id === this.activeCategoryId) ? ' selected' : '';
+            html += `<button class="category-pill child${selected}" data-category="${id}">${name}</button>`;
+            alreadyRenderedIds.add(id);
+          }
+        });
+
+        Object.values(this.categoriesById).forEach(c=>{
+          if(alreadyRenderedIds.has(c.id)) return;
+          const count=(this.itemsByCategoryId[c.id]||[]).length;
+          if(count>0){
+            const selected = (c.id === this.activeCategoryId) ? ' selected' : '';
+            html += `<button class="category-pill child${selected}" data-category="${c.id}">${c.name}</button>`;
+          }
+        });
+
+        this.el.categoryNav.innerHTML = html;
+
+        this.el.categoryNav.onclick = (e)=>{
+          const childBtn = e.target.closest('.category-pill.child');
+          if(childBtn){
+            const catId = childBtn.dataset.category;
+            this.el.categoryNav.querySelectorAll('.category-pill.child').forEach(b => b.classList.remove('selected'));
+            childBtn.classList.add('selected');
+            this._setActiveCategory(catId);
+          }
+        };
+      }
+
+      _setActiveCategory(categoryId){
+        this.activeCategoryId = categoryId;
+        this._buildCategoryNav();
+        this._renderCategoryItems(categoryId);
+      }
+
+      _renderCategoryItems(categoryId){
+        const itemIds = this.itemsByCategoryId[categoryId] || [];
+        if(!itemIds.length){ this.el.itemsMount.innerHTML = '<div class="loading">No items in this category.</div>'; return; }
+        this.el.itemsMount.innerHTML = itemIds.map(id=>this._renderItemCard(this.itemsById[id])).join('');
+        this.el.itemsMount.querySelectorAll('.item-header').forEach(header=>{
+          header.addEventListener('click', (ev)=>{
+            if (ev.target.closest('.option-badge')) return;
+            const card = header.closest('.item-card'); const details = card.querySelector('.item-details'); const isOpen = card.classList.contains('expanded');
+            this.el.itemsMount.querySelectorAll('.item-card.expanded').forEach(c=>{ if(c!==card){ c.classList.remove('expanded'); c.querySelector('.item-details').style.maxHeight = 0; }});
+            if(!isOpen){ card.classList.add('expanded'); this._ensureDefaults(card); this._recalcCardPrice(card); details.style.maxHeight = details.scrollHeight + 'px'; } else { card.classList.remove('expanded'); details.style.maxHeight = 0; }
+          });
+        });
+
+        this.el.itemsMount.querySelectorAll('.item-card .add-to-cart-btn').forEach(btn=>{
+          btn.addEventListener('click', e=>{ e.stopPropagation(); const card = e.currentTarget.closest('.item-card'); this._addCardToCart(card); });
+        });
+      }
+
+      _renderItemCard(item){
+        const vars=this.variationsByItemId[item.id]||[]; const singleVar = vars.length===1?vars[0]:null;
+        const collapsedPrice = singleVar? singleVar.price_money?.amount : (this._lowestVar(item.id) || 0);
+        const desc=(item.description_plaintext||item.description||'').replace(/</g,'&lt;');
+        return `
+          <div class="item-card" data-item-id="\${item.id}">
+            <div class="item-header">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                  <h4 class="item-title">\${item.name}</h4>
+                  \${collapsedPrice!=null?`<div class="item-price">\${this._formatPrice(collapsedPrice)}</div>`:''}
+                </div>
+                \${desc?`<div class="item-desc">\${desc}</div>`:''}
+              </div>
+            </div>
+            <div class="item-details"><div class="item-details-inner">
+              \${this._renderVariations(this.variationsByItemId[item.id]||[])}
+              \${this._renderModifiers(item)}
+              \${this._renderItemOptions(item)}
+              <button class="add-to-cart-btn" disabled>Add to cart</button>
+            </div></div>
+          </div>`;
+      }
+
+      _lowestVar(itemId){ const vars=this.variationsByItemId[itemId]||[]; if(!vars.length) return null; return [...vars].sort((a,b)=>(a.price_money?.amount||0)-(b.price_money?.amount||0))[0].price_money?.amount || null; }
+
+      _renderVariations(vars){
+        if(!vars.length) return '';
+        if(vars.length===1) return `<input type="hidden" class="auto-variation" value="\${vars[0].id}" data-price="\${vars[0].price_money?.amount||0}" />`;
+        return `<div class="option-group" data-group-type="variation" data-min="1" data-max="1"><div class="option-label required">Choose a size</div><div class="badge-row">\${vars.map(v=>`<button type="button" class="option-badge" data-kind="variation" data-id="\${v.id}" data-price="\${v.price_money?.amount||0}">\${v.name}\${v.price_money? ' '+this._formatPrice(v.price_money.amount):''}</button>`).join('')}</div><div class="option-hint">Choose 1</div></div>`;
+      }
+
+      _renderModifiers(item){
+        if(!Array.isArray(item.modifier_list_info)||!item.modifier_list_info.length) return '';
+        let html='';
+        item.modifier_list_info.filter(i=>i.enabled!==false && i.hidden_from_customer!==true).sort((a,b)=>(a.ordinal||0)-(b.ordinal||0)).forEach(info=>{
+          const list=this.modifierListsById[info.modifier_list_id]; if(!list) return;
+          let minSel=(info.min_selected_modifiers!=null && info.min_selected_modifiers!==-1)? info.min_selected_modifiers : (list.min_selected_modifiers!=null && list.min_selected_modifiers!==-1 ? list.min_selected_modifiers : 0);
+          let maxSel=(info.max_selected_modifiers!=null && info.max_selected_modifiers!==-1) ? info.max_selected_modifiers : (list.max_selected_modifiers!=null && list.max_selected_modifiers!==-1 ? list.max_selected_modifiers : (list.selection_type==='SINGLE'?1:99));
+          const required = minSel>0; const isSingle = maxSel===1;
+          const hint = isSingle ? 'Choose 1' : (required ? \`Select at least \${minSel}\${maxSel<99?\`, up to \${maxSel}\`:''}\` : \`Optional\${maxSel<99?\`, up to \${maxSel}\`:''}\`);
+          html += \`<div class="option-group" data-group-type="modifier" data-min="\${minSel}" data-max="\${maxSel}"><div class="option-label \${required?'required':''}">\${list.name}</div><div class="badge-row">\${(list.modifiers||[]).map(m=>{ const md=m.modifier_data; if(!md) return ''; const price=md.price_money?.amount||0; const def = md.on_by_default ? 'data-default="1"' : ''; return \`<button type="button" class="option-badge" data-kind="modifier" data-id="\${m.id}" data-price="\${price}" \${def}>\${md.name}\${price?' '+this._formatPrice(price):''}</button>\`; }).join('')}</div><div class="option-hint">\${hint}</div></div>\`;
+        });
+        return html;
+      }
+
+      _renderItemOptions(item){
+        const optionIds=item.item_option_ids || (item.item_options||[]).map(o=>o.item_option_id);
+        if(!Array.isArray(optionIds)||!optionIds.length) return '';
+        let html='';
+        optionIds.forEach(oid=>{
+          const opt=this.itemOptionsById[oid];
+          if(!opt||!Array.isArray(opt.values)||!opt.values.length) return;
+          const single = opt.selection_type==='SINGLE'; const min=0, max=single?1:99; const hint= single? 'Choose 1':'Optional';
+          html += \`<div class="option-group" data-group-type="item_option" data-min="\${min}" data-max="\${max}"><div class="option-label">\${opt.name}</div><div class="badge-row">\${opt.values.map(v=>{ const vd = v.item_option_value_data; const price = vd?.price_money?.amount||0; return \`<button type="button" class="option-badge" data-kind="item_option" data-id="\${v.id}" data-price="\${price}">\${vd?.name||'Option'}\${price?' '+this._formatPrice(price):''}</button>\`; }).join('')}</div><div class="option-hint">\${hint}</div></div>\`;
+        });
+        return html;
+      }
+
+      _ensureDefaults(card){
+        const autoVar = card.querySelector('.auto-variation');
+        if(autoVar){ card.dataset.variationId=autoVar.value; card.dataset.variationPrice=autoVar.dataset.price; }
+        card.querySelectorAll('.option-group[data-group-type="modifier"]').forEach(group=>{
+          const min=parseInt(group.dataset.min||'0',10);
+          group.querySelectorAll('.option-badge[data-default="1"]').forEach(b=>b.classList.add('selected'));
+          let selected = group.querySelectorAll('.option-badge.selected').length;
+          if(selected < min){ [...group.querySelectorAll('.option-badge:not(.selected)')].slice(0, min - selected).forEach(b=>b.classList.add('selected')); }
+        });
+      }
+
+      _handleBadgeToggle(card,badge){
+        const group = badge.closest('.option-group'); if(!group) return;
+        const min = parseInt(group.dataset.min||'0',10); const max = parseInt(group.dataset.max||'99',10);
+        const kind = badge.dataset.kind; const isSelected = badge.classList.contains('selected');
+        if(kind==='variation'){ group.querySelectorAll('.option-badge').forEach(b=>b.classList.remove('selected')); badge.classList.add('selected'); this._recalcCardPrice(card); return; }
+        const selectedNow = [...group.querySelectorAll('.option-badge.selected')];
+        if(max===1){ if(isSelected){ if(min===0) badge.classList.remove('selected'); } else { selectedNow.forEach(b=>b.classList.remove('selected')); badge.classList.add('selected'); } }
+        else { if(isSelected){ if(selectedNow.length > min) badge.classList.remove('selected'); } else { if(selectedNow.length >= max){ badge.classList.add('locked'); setTimeout(()=>badge.classList.remove('locked'),300); return; } badge.classList.add('selected'); } }
+        this._recalcCardPrice(card);
+      }
+
+      _recalcCardPrice(card){
+        const itemId=card.dataset.itemId; const vars=this.variationsByItemId[itemId]||[]; let total=0; let variationName='';
+        if(vars.length===1){ total = vars[0].price_money?.amount||0; variationName = vars[0].name; card.dataset.variationId = vars[0].id; }
+        else if(vars.length>1){
+          const sel=card.querySelector('.option-badge[data-kind="variation"].selected');
+          if(sel){ total += parseInt(sel.dataset.price||'0',10); const vid=sel.dataset.id; const vObj=vars.find(v=>v.id===vid); variationName = vObj?.name||''; card.dataset.variationId=vid; }
+        }
+        card.querySelectorAll('.option-badge[data-kind="modifier"].selected').forEach(b=> total += parseInt(b.dataset.price||'0',10));
+        card.querySelectorAll('.option-badge[data-kind="item_option"].selected').forEach(b=> total += parseInt(b.dataset.price||'0',10));
+        let requiredOK=true;
+        card.querySelectorAll('.option-group').forEach(group=>{
+          const gmin=parseInt(group.dataset.min||'0',10);
+          if(gmin>0 && group.querySelectorAll('.option-badge.selected').length<gmin) requiredOK=false;
+          if(group.dataset.groupType==='variation' && vars.length>1 && !group.querySelector('.option-badge.selected')) requiredOK=false;
+        });
+        const btn=card.querySelector('.add-to-cart-btn');
+        btn.disabled=!requiredOK; btn.textContent = requiredOK ? \`Add to cart \${this._formatPrice(total)}\` : 'Select required options';
+        card.dataset.totalPrice=total; card.dataset.chosenVariationName=variationName;
+        if(card.classList.contains('expanded')) card.querySelector('.item-details').style.maxHeight = card.querySelector('.item-details').scrollHeight + 'px';
+      }
+
+      _addCardToCart(card){
+        const itemId=card.dataset.itemId; const item=this.itemsById[itemId]; const total=parseInt(card.dataset.totalPrice||'0',10); const variationName=card.dataset.chosenVariationName;
+        const selections=[]; if(variationName) selections.push(variationName);
+        card.querySelectorAll('.option-badge[data-kind="modifier"].selected').forEach(b=>selections.push(b.textContent.trim()));
+        card.querySelectorAll('.option-badge[data-kind="item_option"].selected').forEach(b=>selections.push(b.textContent.trim()));
+        this.cart.push({ id: Date.now()+Math.random(), itemId, name: item.name + (variationName?` (\${variationName})`:''), options: selections, price: total, qty: 1 });
+        this._setLS('barnwell_cart', this.cart); this._renderCart(); card.classList.remove('expanded'); card.querySelector('.item-details').style.maxHeight=0;
+      }
+
+      _renderCart(){
+        this.el.cartCount.textContent=this.cart.length;
+        if(!this.cart.length){
+          this.el.cartItems.innerHTML='<div class="empty-cart">Your cart is empty</div>';
+          this.el.cartTotal.textContent='Total: £0.00';
+          this.el.checkoutBtn.disabled=true;
+          return;
+        }
+        const total=this.cart.reduce((s,i)=>s + i.price * (i.qty||1),0);
+        this.el.cartItems.innerHTML=this.cart.map((c,i)=>`
+          <div class="cart-item">
+            <div class="cart-item-info">
+              <div class="cart-item-name">\${c.name}</div>
+              \${c.options && c.options.length?`<div class="cart-item-options">\${c.options.join(', ')}</div>`:''}
+            </div>
+            <div class="cart-controls">
+              <div class="qty-wrap" aria-label="Change quantity">
+                <button class="qty-btn qty-minus" data-index="\${i}" aria-label="Decrease">−</button>
+                <div class="qty-val">\${c.qty||1}</div>
+                <button class="qty-btn qty-plus" data-index="\${i}" aria-label="Increase">+</button>
+              </div>
+              <div class="cart-line-total">\${this._formatPrice(c.price * (c.qty||1))}</div>
+              <button class="remove-item" data-index="\${i}" aria-label="Remove">✕</button>
+            </div>
+          </div>
+        `).join('');
+        this.el.cartItems.querySelectorAll('.qty-minus').forEach(btn=>btn.addEventListener('click',()=>{
+          const idx=parseInt(btn.dataset.index,10); const it=this.cart[idx]; if(!it) return; it.qty = Math.max(0, (it.qty||1) - 1); if(it.qty===0) this.cart.splice(idx,1); this._setLS('barnwell_cart', this.cart); this._renderCart();
+        }));
+        this.el.cartItems.querySelectorAll('.qty-plus').forEach(btn=>btn.addEventListener('click',()=>{
+          const idx=parseInt(btn.dataset.index,10); const it=this.cart[idx]; if(!it) return; it.qty = (it.qty||1) + 1; this._setLS('barnwell_cart', this.cart); this._renderCart();
+        }));
+        this.el.cartItems.querySelectorAll('.remove-item').forEach(btn=>btn.addEventListener('click',()=>{
+          const idx=parseInt(btn.dataset.index,10);
+          const item = this.cart[idx];
+          if(!item) return;
+          const ok = window.confirm(\`Are you sure you want to remove "\${item.name}" from your cart?\`);
+          if(!ok) return;
+          this.cart.splice(idx,1);
+          this._setLS('barnwell_cart', this.cart);
+          this._renderCart();
+        }));
+        this.el.cartTotal.textContent='Total: '+this._formatPrice(total);
+        this.el.checkoutBtn.disabled=false;
+      }
+
+      _checkout(){
+        if(!this.cart.length) return;
+        this._toggleCart(false);
+        setTimeout(()=>{ this._renderCheckout(); this.el.checkoutOverlay.classList.add('visible'); document.body.classList.add('modal-open'); }, 20);
+      }
+      _closeCheckout(){ this.el.checkoutOverlay.classList.remove('visible'); document.body.classList.remove('modal-open'); }
+
+      _renderCheckout(){ this._renderAddressList(); this._recomputeTotals(); }
+
+      _renderAddressList(){
+        if(!this.el.addrList) this.el.addrList = document.getElementById('addrList');
+        if(!this.el.addrList) return;
+        const list = this.savedAddresses || [];
+        if(!list.length){ this.el.addrList.innerHTML = '<div class="small">No saved addresses yet.</div>'; return; }
+        this.el.addrList.innerHTML = list.map((a,idx)=>{
+          const sel = this._isSameAddress(a, this.selectedAddress);
+          return \`<div style="padding:8px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+            <div style="min-width:0">
+              <div style="font-weight:900;overflow:hidden;text-overflow:ellipsis">\${a.label || 'Saved address'} \${sel?'<span style="background:#eef3ff;color:#1d4ed8;padding:2px 6px;border-radius:999px;margin-left:8px;font-size:.72rem">Selected</span>':''}</div>
+              <div style="font-size:13px;color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${a.address || ''}</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="input use-address" data-idx="\${idx}" style="cursor:pointer">Use</button>
+              <button class="input del-address" data-idx="\${idx}" style="cursor:pointer">Delete</button>
+            </div>
+          </div>\`;
+        }).join('');
+        this.el.addrList.querySelectorAll('.use-address').forEach(btn=>btn.addEventListener('click', async ()=>{
+          const idx = Number(btn.dataset.idx); const a = this.savedAddresses[idx]; if(!a) return;
+          this.selectedAddress = JSON.parse(JSON.stringify(a));
+          this.addressConfirmed = true;
+          this._populateManualFields(this.selectedAddress.fields || null, this.selectedAddress.address || '');
+          await this._ensureLatLngForSelected(); await this._quoteForSelected();
+          this._renderAddressList(); this._recomputeTotals();
+        }));
+        this.el.addrList.querySelectorAll('.del-address').forEach(btn=>btn.addEventListener('click', ()=>{
+          const idx = Number(btn.dataset.idx); this.savedAddresses.splice(idx,1); this._setLS('saved_addresses', this.savedAddresses); this._renderAddressList();
+        }));
+      }
+
+      _isSameAddress(a,b){
+        if(!a||!b) return false;
+        if(a.lat!=null && a.lng!=null && b.lat!=null && b.lng!=null){
+          const d = Math.hypot(a.lat-b.lat, a.lng-b.lng); if(d < 0.0002) return true;
+        }
+        if(a.address && b.address) return a.address.trim().toLowerCase() === b.address.trim().toLowerCase();
+        return false;
+      }
+
+      async _ensureMapsLoaded(key){
+        if(window.google && window.google.maps) return;
+        await new Promise((resolve,reject)=>{
+          const s=document.createElement('script');
+          s.src=\`https://maps.googleapis.com/maps/api/js?key=\${encodeURIComponent(key)}&libraries=places\`;
+          s.async=true; s.defer=true; s.onload=resolve; s.onerror=()=>reject(new Error('Failed loading Google Maps'));
+          document.head.appendChild(s);
+        });
+      }
+
+      async _geocode(address){
+        if(!window.google || !google.maps) return null;
+        const geocoder = new google.maps.Geocoder();
+        return new Promise((resolve)=> geocoder.geocode({ address }, (results, status)=>{
+          if(status==='OK' && results && results[0]){
+            const r = results[0]; const loc = r.geometry.location;
+            resolve({ lat: loc.lat(), lng: loc.lng(), formatted: r.formatted_address, components: r.address_components, viewport: r.geometry.viewport });
+          } else resolve(null);
+        }));
+      }
+
+      _populateManualFields(fields, formattedFallback=''){
+        const f = fields || { line1:'', line2:'', city:'', postcode:'' };
+        if(this.el.mLine1) this.el.mLine1.value = f.line1 || '';
+        if(this.el.mLine2) this.el.mLine2.value = f.line2 || '';
+        if(this.el.mCity) this.el.mCity.value = f.city || '';
+        if(this.el.mPostcode) this.el.mPostcode.value = f.postcode || (formattedFallback || '').split(',').pop()?.trim() || '';
+      }
+      _readManualFields(){ return { line1: this.el.mLine1.value.trim(), line2: this.el.mLine2.value.trim(), city: this.el.mCity.value.trim(), postcode: this.el.mPostcode.value.trim() }; }
+      _composeAddressString(fields, fallback=''){ const parts = [fields?.line1, fields?.line2, fields?.city, fields?.postcode].filter(Boolean); const s = parts.join(', '); return s || (fallback || '').trim(); }
+
+      async _ensureLatLngForSelected(){
+        const a = this.selectedAddress; if(!a) return;
+        if((a.lat==null || a.lng==null)){
+          if(this.localKeys.mapsKey){
+            const addr = a.address || this._composeAddressString(a.fields||{});
+            if(addr){
+              try {
+                const g = await this._geocode(addr);
+                if(g){ a.lat=g.lat; a.lng=g.lng; a.address=g.formatted; return; }
+              } catch(e){}
+            }
+          }
+          try {
+            const q = a.fields?.postcode || a.address || '';
+            if(!q) return;
+            const path = \`/api/geocode?postcode=\${encodeURIComponent(q)}\`;
+            const resp = await this._fetchJSON(path, {}, 15000);
+            if(resp && Array.isArray(resp.results) && resp.results.length){
+              const r = resp.results[0];
+              const loc = (r.geometry && r.geometry.location) || {};
+              const lat = (typeof loc.lat === 'function') ? loc.lat() : loc.lat;
+              const lng = (typeof loc.lng === 'function') ? loc.lng() : loc.lng;
+              if(lat != null && lng != null){ a.lat = lat; a.lng = lng; a.address = r.formatted_address || a.address || this._composeAddressString(a.fields||{}); }
+            }
+          } catch(e){ console.warn('Server geocode failed', e); }
+        }
+      }
+
+      /* Quote delivery via Cloud Run proxy */
+      async _quoteForSelected(){
+        const a = this.selectedAddress;
+        if(!a){ this.currentQuote = { deliverable:false }; this._recomputeTotals(); return; }
+        try {
+          const payload = {};
+          if(a.lat!=null && a.lng!=null){ payload.lat = a.lat; payload.lng = a.lng; }
+          if(a.fields?.postcode) payload.postcode = a.fields.postcode;
+
+          const j = await this._fetchJSON('/api/delivery-price', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify(payload)
+          }, 15000);
+
+          const deliverable = !!(j && (j.deliverable === true || j.matched === true));
+          const pricePence = (j && typeof j.price_pence === 'number')
+            ? j.price_pence
+            : Math.round(Number(j && j.price != null ? j.price : 0) * 100);
+
+          this.currentQuote = deliverable
+            ? { deliverable:true, price_pence: pricePence, zoneId: j.zoneId || j.zone || null, zoneName: j.zoneName || j.zone || null, lat: a.lat ?? null, lng: a.lng ?? null }
+            : { deliverable:false, message: j && j.message ? j.message : 'Not deliverable' };
+
+          this._recomputeTotals();
+        } catch(e){
+          console.error('delivery-price failed', e);
+          this.currentQuote = { deliverable:false, error:true, errorMessage: e.message };
+          this._recomputeTotals();
+        }
+      }
+
+      _recomputeTotals(){
+        const subtotal = this.cart.reduce((s,i)=>s + i.price * (i.qty||1),0);
+        const deliveryPence =
+          this.currentQuote
+            ? (typeof this.currentQuote.price_pence === 'number'
+                ? this.currentQuote.price_pence
+                : (this.currentQuote.price!=null ? Math.round(Number(this.currentQuote.price)*100) : 0))
+            : 0;
+        if(this.el.sumSubtotal) this.el.sumSubtotal.textContent = this._formatPrice(subtotal);
+        if(this.el.sumDelivery) this.el.sumDelivery.textContent = this._formatPrice(deliveryPence);
+        if(this.el.sumTotal) this.el.sumTotal.textContent = this._formatPrice(subtotal + deliveryPence);
+
+        const hasAddrText = !!(this.selectedAddress && (this.selectedAddress.address || this._composeAddressString(this.selectedAddress.fields||{})));
+        const isDeliverable = !!(this.currentQuote && (this.currentQuote.deliverable === true || this.currentQuote.matched === true));
+        const canPlace = this.cart.length>0 && this.el.custName.value.trim().length>0 && this.el.custPhone.value.trim().length>0 && hasAddrText && this.addressConfirmed && isDeliverable;
+        if(this.el.placeOrderBtn) this.el.placeOrderBtn.disabled = !canPlace;
+      }
+
+      async _saveCurrentAddressLocally(){
+        const fields = this._readManualFields();
+        if(!fields.postcode || !fields.line1){ return alert('Please enter your address (line 1 and postcode)'); }
+
+        this.selectedAddress = { label: fields.line1, address: this._composeAddressString(fields), fields, lat:null, lng:null };
+        this.addressConfirmed = false;
+
+        try { await this._ensureLatLngForSelected(); } catch(e){}
+
+        await this._quoteForSelected();
+
+        const label = this.el.saveAddrLabel.value.trim() || (this.selectedAddress.fields?.line1 || this.selectedAddress.label || 'Saved');
+        const toSave = { label, address: this.selectedAddress.address || this._composeAddressString(this.selectedAddress.fields||{}), lat: this.selectedAddress.lat ?? null, lng: this.selectedAddress.lng ?? null, fields: this.selectedAddress.fields || null };
+        this.savedAddresses.unshift(toSave);
+        this.savedAddresses = this.savedAddresses.slice(0,16);
+        this._setLS('saved_addresses', this.savedAddresses);
+        this.el.saveAddrLabel.value = '';
+
+        const isDeliverable = !!(this.currentQuote && (this.currentQuote.deliverable === true || this.currentQuote.matched === true));
+        if(isDeliverable){
+          this.addressConfirmed = true;
+          alert('Address saved and delivery available. You can proceed to place your order.');
+        } else {
+          this.addressConfirmed = false;
+          alert('Address saved. Delivery is not available for this address.');
+        }
+
+        this._renderAddressList();
+        this._recomputeTotals();
+      }
+
+      async _placeOrder(){
+        const name = this.el.custName.value.trim(); const phone = this.el.custPhone.value.trim(); const email = this.el.custEmail.value.trim();
+        if(!name || !phone) return alert('Please enter your name and phone');
+        if(!this.selectedAddress || !this.addressConfirmed){
+          return alert('Please save or select a delivery address before placing your order.');
+        }
+        await this._ensureLatLngForSelected();
+        await this._quoteForSelected();
+        const isDeliverable = !!(this.currentQuote && (this.currentQuote.deliverable === true || this.currentQuote.matched === true));
+        if(!isDeliverable) return alert('Delivery not available for this address.');
+
+        const subtotal = this.cart.reduce((s,i)=>s + i.price * (i.qty||1),0);
+        const delivery_fee_pence =
+          this.currentQuote && (typeof this.currentQuote.price_pence === 'number'
+            ? this.currentQuote.price_pence
+            : Math.round(Number(this.currentQuote.price || 0) * 100));
+        const total_pence = subtotal + delivery_fee_pence;
+
+        const orderPayload = {
+          customer: { name, phone, email, gbUserId: this.gbUser?.id || null },
+          items: this.cart.map(c=>({ itemId: c.itemId, name: c.name, options: c.options || [], unit_pence: c.price, qty: c.qty||1 })),
+          subtotal_pence: subtotal,
+          delivery: {
+            zoneId: this.currentQuote?.zoneId || null,
+            zoneName: this.currentQuote?.zoneName || null,
+            delivery_fee_pence,
+            lat: this.selectedAddress?.lat ?? null,
+            lng: this.selectedAddress?.lng ?? null,
+            address: this.selectedAddress?.address || this._composeAddressString(this.selectedAddress?.fields||{}),
+            address_fields: this.selectedAddress?.fields || null
+          },
+          total_pence: total_pence,
+          payment: { method: 'unpaid' },
+          meta: { source: 'goodbarber', createdAt: new Date().toISOString() }
+        };
+
+        const base = this.localKeys.orderApiBase || '/api';
+        const url = base.endsWith('/') ? (base + 'createOrder') : (base + '/createOrder');
+
+        try {
+          this.el.placeOrderBtn.disabled = true;
+          const headers = { 'Content-Type': 'application/json' };
+          if(this.localKeys.orderApiToken) headers['Authorization'] = this.localKeys.orderApiToken;
+          const r = await fetch(url, { method:'POST', headers, body: JSON.stringify(orderPayload) });
+          if(!r.ok){ const t = await r.text(); throw new Error(t || 'Order failed'); }
+          const resp = await r.json(); alert('Order placed! ' + (resp.id ? \`ID: \${resp.id}\` : ''));
+          this.cachedUserProfile = { name, phone, email }; this._setLS('barnwell_user_profile', this.cachedUserProfile);
+          this.cart = []; this._setLS('barnwell_cart', this.cart); this._renderCart(); this._closeCheckout();
+          if(resp && resp.id){ try { window.location.href = '/order-confirmation?orderId=' + encodeURIComponent(resp.id); } catch(e){} }
+        } catch (e){ alert('Order failed: ' + e.message); this.el.placeOrderBtn.disabled = false; }
+      }
+
+      _bindGlobals(){
+        this.el.cartBtn.addEventListener('click', ()=> this._toggleCart(true));
+        document.getElementById('cartBack')?.addEventListener('click', ()=> this._toggleCart(false));
+        this.el.overlay.addEventListener('click', ()=> this._toggleCart(false));
+
+        this.el.checkoutBtn.addEventListener('click', (e)=>{ e.stopPropagation(); this._checkout(); });
+
+        document.getElementById('checkoutBack')?.addEventListener('click', ()=> {
+          this._closeCheckout();
+          this._toggleCart(true);
+        });
+
+        this.el.saveAddrBtn.addEventListener('click', ()=> this._saveCurrentAddressLocally());
+        document.addEventListener('click', (e)=>{ if(e.target && e.target.id==='saveAddrBtn') this._saveCurrentAddressLocally(); });
+        this.el.placeOrderBtn.addEventListener('click', ()=> this._placeOrder());
+
+        this.el.addrPickerClose?.addEventListener('click', ()=> this.el.addrPicker.classList.remove('show'));
+        this.el.addrPicker?.addEventListener('click', (e)=>{ if(e.target===this.el.addrPicker) this.el.addrPicker.classList.remove('show'); });
+
+        document.addEventListener('click', (e)=>{
+          const badge = e.target.closest('.option-badge');
+          if(!badge) return;
+          const card = e.target.closest('.item-card');
+          if(card) this._handleBadgeToggle(card,badge);
+        });
+      }
+
+      _toggleCart(open){
+        if(open===true){ this.el.cartDrawer.classList.add('open'); this.el.overlay.classList.add('show'); this.el.cartDrawer.setAttribute('aria-hidden','false'); }
+        else if(open===false){ this.el.cartDrawer.classList.remove('open'); this.el.overlay.classList.remove('show'); this.el.cartDrawer.setAttribute('aria-hidden','true'); }
+        else { const isOpen=this.el.cartDrawer.classList.contains('open'); this._toggleCart(!isOpen); }
+      }
+    }
+
+    // Boot immediately (HTML has been injected)
+    window.ORDER_APP = new BarnwellOrderingSystem();
+  });
+})();
